@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/bdstest/zohosync/internal/config"
+	"github.com/bdstest/zohosync/internal/ui/cli"
 	"github.com/bdstest/zohosync/internal/utils"
 	"github.com/spf13/cobra"
 )
@@ -27,31 +28,22 @@ between your local machine and Zoho WorkDrive.`,
 }
 
 func init() {
-	// Add commands here as we implement them
-	rootCmd.AddCommand(versionCmd)
-}
+	// Initialize CLI
+	cliInstance, err := cli.NewCLI()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize CLI: %v\n", err)
+		os.Exit(1)
+	}
 
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Print version information",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("ZohoSync CLI %s\n", version)
-		fmt.Printf("Build Date: %s\n", buildDate)
-		fmt.Printf("Commit: %s\n", commit)
-		fmt.Printf("Go Version: %s\n", "1.21+")
-	},
+	// Add commands
+	rootCmd.AddCommand(cliInstance.CreateLoginCommand())
+	rootCmd.AddCommand(cliInstance.CreateStatusCommand())
+	rootCmd.AddCommand(cliInstance.CreateSyncCommand())
+	rootCmd.AddCommand(cliInstance.CreateListCommand())
+	rootCmd.AddCommand(cliInstance.CreateVersionCommand(version, buildDate, commit))
 }
 
 func main() {
-	// Load configuration
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
-	}
-	
-	// Initialize logger
-	utils.InitLogger(cfg.App.LogLevel)
-	
 	// Execute root command
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
