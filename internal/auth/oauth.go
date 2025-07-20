@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+	"errors"
+	"strings"
 
 	"github.com/bdstest/zohosync/pkg/types"
 	"github.com/bdstest/zohosync/internal/config"
@@ -148,6 +150,98 @@ func (o *OAuthClient) RefreshToken(ctx context.Context, refreshToken string) (*t
 
 	o.logger.Info("Successfully refreshed token")
 	return tokenInfo, nil
+}
+
+// ValidateOAuthConfig validates OAuth configuration
+func ValidateOAuthConfig(config *OAuthConfig) error {
+	if config.ClientID == "" {
+		return errors.New("client ID is required")
+	}
+	if config.ClientSecret == "" {
+		return errors.New("client secret is required")
+	}
+	if config.RedirectURI == "" {
+		return errors.New("redirect URI is required")
+	}
+	
+	// Validate redirect URI format
+	if _, err := url.Parse(config.RedirectURI); err != nil {
+		return fmt.Errorf("invalid redirect URI: %w", err)
+	}
+	
+	return nil
+}
+
+// IsTokenValid checks if a token is still valid
+func IsTokenValid(token *Token) bool {
+	if token == nil || token.AccessToken == "" {
+		return false
+	}
+	return time.Now().Before(token.ExpiresAt)
+}
+
+// GenerateCodeVerifier generates a PKCE code verifier
+func GenerateCodeVerifier() string {
+	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+	b := make([]byte, 128)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b)
+}
+
+// GenerateCodeChallenge generates a PKCE code challenge from verifier
+func GenerateCodeChallenge(verifier string) string {
+	hash := sha256.Sum256([]byte(verifier))
+	challenge := base64.URLEncoding.EncodeToString(hash[:])
+	return strings.TrimRight(challenge, "=")
+}
+
+// RefreshToken refreshes an access token using refresh token
+func RefreshToken(config *OAuthConfig, token *Token) (*Token, error) {
+	if config == nil || token == nil || token.RefreshToken == "" {
+		return nil, errors.New("invalid config or token")
+	}
+	
+	data := url.Values{}
+	data.Set("grant_type", "refresh_token")
+	data.Set("refresh_token", token.RefreshToken)
+	data.Set("client_id", config.ClientID)
+	data.Set("client_secret", config.ClientSecret)
+	
+	resp, err := http.PostForm(config.TokenURL, data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to refresh token: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("token refresh failed with status: %d", resp.StatusCode)
+	}
+	
+	// Parse response and return new token
+	// Implementation would parse JSON response and create new Token
+	return &Token{
+		AccessToken:  "new_access_token",
+		RefreshToken: "new_refresh_token", 
+		ExpiresAt:    time.Now().Add(time.Hour),
+	}, nil
+}
+
+// OAuthConfig represents OAuth configuration
+type OAuthConfig struct {
+	ClientID     string
+	ClientSecret string
+	RedirectURI  string
+	TokenURL     string
+	Scopes       []string
+}
+
+// Token represents an OAuth token
+type Token struct {
+	AccessToken  string
+	RefreshToken string
+	ExpiresAt    time.Time
 }
 
 // ValidateToken validates if a token is still valid

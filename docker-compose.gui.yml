@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # ZohoSync with full GUI support and security testing
+  zohosync-gui:
+    build:
+      context: .
+      dockerfile: Dockerfile.security
+      target: development
+    volumes:
+      - ./:/app
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+      # X11 forwarding for GUI applications
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      # For Wayland support if needed
+      - ${XDG_RUNTIME_DIR:-/tmp}:${XDG_RUNTIME_DIR:-/tmp}
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    environment:
+      - CGO_ENABLED=1
+      - GOOS=linux
+      - DISPLAY=${DISPLAY:-:0}
+      - XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/tmp}
+      - WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-}
+      - QT_X11_NO_MITSHM=1
+      - GTK_THEME=Adwaita:dark
+      - GDK_SCALE=1
+    stdin_open: true
+    tty: true
+    networks:
+      - zohosync-net
+    command: ["/bin/bash"]
+    privileged: false
+    # Use host user to avoid permission issues
+    user: "${USER_ID:-1000}:${GROUP_ID:-1000}"
+    devices:
+      - /dev/dri:/dev/dri  # GPU access for better GUI performance
+
+  # GUI testing service (runs the GUI app directly)
+  zohosync-gui-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.security
+      target: development
+    volumes:
+      - ./:/app
+      # X11 forwarding
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${XDG_RUNTIME_DIR:-/tmp}:${XDG_RUNTIME_DIR:-/tmp}
+    environment:
+      - CGO_ENABLED=1
+      - GOOS=linux
+      - DISPLAY=${DISPLAY:-:0}
+      - XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/tmp}
+      - WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-}
+    networks:
+      - zohosync-net
+    command: ["make", "build-gui"]
+    user: "${USER_ID:-1000}:${GROUP_ID:-1000}"
+
+volumes:
+  go-mod-cache:
+    driver: local
+  go-build-cache:
+    driver: local
+
+networks:
+  zohosync-net:
+    driver: bridge

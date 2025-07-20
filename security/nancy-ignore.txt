@@ -1,0 +1,7 @@
+# Nancy Ignore File for ZohoSync
+# Add CVE IDs that are false positives or acceptable risks
+# Format: CVE-YYYY-NNNNN reason
+
+# Example entries (remove if not needed):
+# CVE-2021-12345 False positive - not applicable to our use case
+# CVE-2022-67890 Accepted risk - dev dependency only

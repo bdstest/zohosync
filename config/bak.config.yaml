@@ -1,0 +1,31 @@
+# ZohoSync Configuration
+# Replace the placeholder values with your actual Zoho OAuth credentials
+
+oauth:
+  client_id: "1000.LZP2I9FSBFLX42MQ3WTFT0EABRSYQW"
+  client_secret: "2a146b72f5bfac3447df81f96db634cfa643370f3d"
+  redirect_url: "http://localhost:8080/callback"
+  scopes:
+    - "WorkDrive.files.ALL"
+    - "WorkDrive.workspace.READ"
+    - "WorkDrive.organization.READ"
+  auth_url: "https://accounts.zoho.com/oauth/v2/auth"
+  token_url: "https://accounts.zoho.com/oauth/v2/token"
+
+api:
+  base_url: "https://www.zohoapis.com/workdrive/api/v1"
+  timeout: 30
+  max_retries: 3
+  
+storage:
+  database_path: "~/.config/zohosync/zohosync.db"
+  sync_directory: "~/ZohoSync"
+
+sync:
+  interval: 300  # 5 minutes
+  concurrent_uploads: 3
+  concurrent_downloads: 5
+  
+logging:
+  level: "info"
+  file: "~/.config/zohosync/zohosync.log"

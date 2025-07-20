@@ -1,0 +1,37 @@
+# Simple ZohoSync Security Testing Docker Environment
+FROM golang:1.21-bullseye AS security-simple
+
+# Set working directory
+WORKDIR /app
+
+# Create a simple go.sum if it doesn't exist
+RUN touch go.sum
+
+# Copy Go modules files
+COPY go.mod go.sum ./
+
+# Copy project files
+COPY . .
+
+# Install security tools
+RUN go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest && \
+    go install honnef.co/go/tools/cmd/staticcheck@latest && \
+    go install github.com/sonatypecommunity/nancy@latest
+
+# Install golangci-lint
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | \
+    sh -s -- -b $(go env GOPATH)/bin v1.55.2
+
+# Create security reports directory
+RUN mkdir -p security/reports
+
+# Set environment variables
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+
+# Default command runs security scan
+CMD ["bash", "-c", "echo 'Running ZohoSync Security Analysis...' && \
+     echo '🔍 Running Gosec...' && gosec -quiet ./... && \
+     echo '🔍 Running StaticCheck...' && staticcheck ./... && \
+     echo '🔍 Running Go Vet...' && go vet ./... && \
+     echo '✅ Security scan completed!'"]

@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # Security scanning service
+  zohosync-security:
+    build:
+      context: .
+      dockerfile: Dockerfile.security
+      target: security-scan
+    volumes:
+      - ./security/reports:/app/security/reports
+      - ./:/app:ro  # Read-only mount of source code
+    environment:
+      - CGO_ENABLED=1
+      - GOOS=linux
+    command: ["./security/security-scan.sh"]
+    networks:
+      - zohosync-net
+
+  # Development environment with all tools (including GUI support)
+  zohosync-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.security
+      target: development
+    volumes:
+      - ./:/app
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+      # X11 forwarding for GUI applications
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    environment:
+      - CGO_ENABLED=1
+      - GOOS=linux
+      - DISPLAY=${DISPLAY:-:0}
+      - XDG_RUNTIME_DIR=/tmp
+      - WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-}
+    stdin_open: true
+    tty: true
+    networks:
+      - zohosync-net
+    command: ["/bin/bash"]
+    privileged: false
+    user: "${UID:-1000}:${GID:-1000}"
+
+  # Quick security check service
+  zohosync-security-quick:
+    build:
+      context: .
+      dockerfile: Dockerfile.security
+      target: security-base
+    volumes:
+      - ./:/app:ro
+    environment:
+      - CGO_ENABLED=1
+      - GOOS=linux
+    command: ["make", "security-quick"]
+    networks:
+      - zohosync-net
+
+  # Build service for testing builds
+  zohosync-build:
+    build:
+      context: .
+      dockerfile: Dockerfile.security
+      target: builder
+    volumes:
+      - ./:/app
+      - build-cache:/app/build
+    environment:
+      - CGO_ENABLED=1
+      - GOOS=linux
+    command: ["make", "build"]
+    networks:
+      - zohosync-net
+
+  # Production image for testing
+  zohosync-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile.security
+      target: production
+    ports:
+      - "9080:8080"
+    networks:
+      - zohosync-net
+    restart: unless-stopped
+
+volumes:
+  go-mod-cache:
+    driver: local
+  go-build-cache:
+    driver: local
+  build-cache:
+    driver: local
+
+networks:
+  zohosync-net:
+    driver: bridge

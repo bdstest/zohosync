@@ -1,0 +1,91 @@
+# ZohoSync Security Testing Docker Environment
+FROM golang:1.21-alpine AS security-base
+
+# Install system dependencies
+RUN apk add --no-cache \
+    git \
+    gcc \
+    musl-dev \
+    pkgconfig \
+    gtk4.0-dev \
+    webkit2gtk-4.0-dev \
+    curl \
+    bash \
+    make
+
+# Set working directory
+WORKDIR /app
+
+# Copy Go modules files first for better layer caching
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Install security tools
+RUN go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest && \
+    go install honnef.co/go/tools/cmd/staticcheck@latest && \
+    go install github.com/sonatypecommunity/nancy@latest
+
+# Install golangci-lint
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | \
+    sh -s -- -b $(go env GOPATH)/bin v1.55.2
+
+# Install govulncheck (optional but recommended)
+RUN go install golang.org/x/vuln/cmd/govulncheck@latest
+
+# Copy project files
+COPY . .
+
+# Create security reports directory
+RUN mkdir -p security/reports
+
+# Security scanning stage
+FROM security-base AS security-scan
+
+# Set environment variables
+ENV CGO_ENABLED=1
+ENV GOOS=linux
+
+# Default command runs comprehensive security scan
+CMD ["./security/security-scan.sh"]
+
+# Development stage with all tools
+FROM security-base AS development
+
+# Install additional development tools
+RUN go install github.com/air-verse/air@latest && \
+    go install github.com/swaggo/swag/cmd/swag@latest
+
+# Expose ports for development
+EXPOSE 8080 8443
+
+# Default command for development
+CMD ["/bin/bash"]
+
+# Build stage for production binaries
+FROM security-base AS builder
+
+# Build all binaries
+RUN make build
+
+# Final production stage (minimal)
+FROM alpine:latest AS production
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    gtk4.0 \
+    webkit2gtk-4.0
+
+# Copy binaries from builder
+COPY --from=builder /app/zohosync /usr/local/bin/
+COPY --from=builder /app/zohosync-cli /usr/local/bin/
+COPY --from=builder /app/zohosync-daemon /usr/local/bin/
+
+# Create non-root user
+RUN adduser -D -s /bin/sh zohosync
+USER zohosync
+
+# Default command
+CMD ["zohosync-cli", "--help"]

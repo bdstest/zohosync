@@ -1,0 +1,109 @@
+run:
+  deadline: 5m
+  issues-exit-code: 1
+  tests: true
+  skip-dirs:
+    - vendor
+    - .git
+    - docs
+  skip-files:
+    - ".*_test.go"
+
+output:
+  format: json
+  print-issued-lines: true
+  print-linter-name: true
+
+linters-settings:
+  gosec:
+    severity: "medium"
+    confidence: "medium"
+    excludes:
+      - G104  # Audit errors not checked (too noisy for this codebase)
+    includes:
+      - G101  # Look for hard coded credentials
+      - G102  # Bind to all interfaces
+      - G103  # Audit the use of unsafe block
+      - G201  # SQL query construction using format string
+      - G202  # SQL query construction using string concatenation
+      - G203  # Use of unescaped data in HTML templates
+      - G204  # Audit use of command execution
+      - G301  # Poor file permissions used when creating a directory
+      - G302  # Poor file permissions used with chmod
+      - G303  # Creating tempfile using a predictable path
+      - G304  # File path provided as taint input
+      - G305  # File traversal when extracting zip archive
+      - G306  # Poor file permissions used when writing to a file
+      - G307  # Deferring a method which returns an error
+      - G401  # Detect the usage of DES, RC4, MD5 or SHA1
+      - G402  # Look for bad TLS connection settings
+      - G403  # Ensure minimum RSA key length of 2048 bits
+      - G404  # Insecure random number source (rand)
+      - G501  # Import blacklist: crypto/md5
+      - G502  # Import blacklist: crypto/des
+      - G503  # Import blacklist: crypto/rc4
+      - G504  # Import blacklist: net/http/cgi
+      - G505  # Import blacklist: crypto/sha1
+      - G601  # Implicit memory aliasing of items from a range statement
+
+  staticcheck:
+    go: "1.21"
+    checks: ["all"]
+
+  govet:
+    check-shadowing: true
+    enable-all: true
+
+  gocyclo:
+    min-complexity: 15
+
+  misspell:
+    locale: US
+
+  unused:
+    go: "1.21"
+
+linters:
+  enable:
+    - gosec          # Security analyzer
+    - staticcheck    # Advanced Go linter
+    - govet          # Standard Go tool
+    - ineffassign    # Detect ineffectual assignments
+    - misspell       # Fix spelling mistakes
+    - gocyclo        # Compute cyclomatic complexities
+    - unused         # Check for unused constants, variables, functions
+    - errcheck       # Check for unchecked errors
+    - goconst        # Find repeated strings that could be constants
+    - gofmt          # Check whether code was gofmt-ed
+    - goimports      # Check import statements are formatted correctly
+    - revive         # Fast, configurable, extensible linter
+    - typecheck      # Parse and type-check Go code
+
+  disable:
+    - deadcode       # Deprecated
+    - varcheck       # Deprecated
+    - structcheck    # Deprecated
+    - maligned       # Deprecated
+
+issues:
+  exclude-use-default: false
+  exclude:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gosec
+        - gocyclo
+    # Exclude known linter issues
+    - text: "weak cryptographic primitive"
+      linters:
+        - gosec
+    - text: "Use of unsafe calls should be audited"
+      linters:
+        - gosec
+
+severity:
+  default-severity: error
+  rules:
+    - linters:
+        - gosec
+      severity: error
