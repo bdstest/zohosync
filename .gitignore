@@ -1,0 +1,46 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+/zohosync
+/zohosync-cli
+/zohosync-daemon
+
+# Test binary
+*.test
+
+# Output of go coverage
+*.out
+
+# Dependency directories
+vendor/
+
+# Go workspace
+go.work
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Application files
+config.yaml
+*.log
+*.db
+*.sqlite
+
+# Build directories
+/dist/
+/build/
+/release/
+
+# Temporary files
+*.tmp
+*.temp
